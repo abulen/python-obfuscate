@@ -11,17 +11,7 @@ from marshal import dumps
 
 
 dry_run = False
-
-
-def minimize_file(src_file, dst_file):
-    logging.debug(f'minimizing: {src_file} -> {dst_file}')
-    if dry_run:
-        return
-    with open(src_file, 'r') as infile:
-        code = infile.read()
-    minimized_code = minimize(code)
-    with open(dst_file, 'w') as outfile:
-        outfile.write(minimized_code)
+minimize_code = False
 
 
 def obfuscate(src_file, dst_file):
@@ -30,6 +20,9 @@ def obfuscate(src_file, dst_file):
         return
     with open(src_file, 'r') as infile:
         code = infile.read()
+    if minimize_code:
+        logging.debug(f'minimizing {src_file}')
+        code = minimize(code)
     level_1 = compile(code, 'level_1', 'exec')
     level_1 = dumps(level_1)
     level_2 = b'from marshal import loads\nexec(loads(%r))' % level_1
@@ -43,7 +36,7 @@ def obfuscate(src_file, dst_file):
         outfile.write(level_4)
 
 
-def process_file(src_file, dst_file, minimize_files=False):
+def process_file(src_file, dst_file):
     if not os.path.exists(src_file):
         raise FileNotFoundError(src_file)
     if not src_file.endswith('.py'):
@@ -52,18 +45,10 @@ def process_file(src_file, dst_file, minimize_files=False):
     if not dry_run:
         if not os.path.exists(out_dir):
             os.makedirs(out_dir, exist_ok=True)
-    if minimize_files:
-        with NamedTemporaryFile(delete=True, suffix='.py') as f:
-            tmp = f.name
-        print()
-        minimize_file(src_file, tmp)
-        obfuscate(tmp, dst_file)
-        os.remove(tmp)
-    else:
         obfuscate(src_file, dst_file)
 
 
-def process_directory(src_dir, dst_dir, minimize_files=False):
+def process_directory(src_dir, dst_dir):
     if not os.path.exists(src_dir):
         raise FileNotFoundError(src_dir)
     if not os.path.exists(dst_dir):
@@ -80,7 +65,7 @@ def process_directory(src_dir, dst_dir, minimize_files=False):
             src = os.path.join(root, file)
             dst = os.path.join(dst_dir, file)
             if file.endswith('.py'):
-                process_file(src, dst, minimize_files=minimize_files)
+                process_file(src, dst)
             else:
                 logging.debug(f'copying {src} -> {dst}')
                 if not dry_run:
@@ -107,15 +92,17 @@ def main():
     logging.debug(args.__dict__)
     global dry_run
     dry_run = args.dry_run
+    global minimize_code
+    minimize_code = args.minimize
     if dry_run:
         logging.info("DRY RUN!!!")
     try:
         if not os.path.exists(args.src):
             raise FileNotFoundError(args.src)
         if os.path.isdir(args.src):
-            process_directory(args.src, args.dst, minimize_files=args.minimize)
+            process_directory(args.src, args.dst)
         else:
-            process_file(args.src, args.dst, minimize_files=args.minimize)
+            process_file(args.src, args.dst)
         logging.info('Complete')
     except Exception as e:
         print(str(e), file=sys.stderr)
