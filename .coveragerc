@@ -1,0 +1,12 @@
+[report]
+exclude_line =
+    pragma: no cover
+
+    def __repr__
+    if self\.debug
+
+    @(abc\.)?abstractmethod
+
+[run]
+source = obfuscate
+command_line = -m pytest

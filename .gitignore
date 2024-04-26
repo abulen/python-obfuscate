@@ -1,0 +1,11 @@
+obfuscate.egg-info/
+*.pyc
+dist
+docs/build
+docs/_build
+venv
+.venv
+.vscode
+.idea
+__pycache__
+tests
